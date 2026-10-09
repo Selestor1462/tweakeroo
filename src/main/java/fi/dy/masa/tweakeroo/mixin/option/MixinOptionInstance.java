@@ -1,5 +1,6 @@
 package fi.dy.masa.tweakeroo.mixin.option;
 
+import com.mojang.serialization.Codec;
 import net.minecraft.client.OptionInstance;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -8,6 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import fi.dy.masa.tweakeroo.tweaks.MiscTweaks;
@@ -19,8 +21,7 @@ import fi.dy.masa.tweakeroo.tweaks.MiscTweaks;
  * being overridden too easily whenever they try to "reset" the
  * vanilla values; such as with Sodium, for example.
  * -
- * At least I am commenting out the `MiscTweaks.GammaOverrideValue.INSTANCE`,
- * and keeping the janky Vanilla warnings.
+ * Overrides the gamma codec to allow double values without triggering out-of-range errors on save.
  * -
  * @param <T>
  */
@@ -61,6 +62,17 @@ public abstract class MixinOptionInstance<T>
 		if (this.isGamma)
 		{
 			MiscTweaks.onVanillaGammaChange((Double) this.preValue, (Double) this.value);
+		}
+	}
+
+	@Inject(method = "codec", at = @At("HEAD"), cancellable = true)
+	private void tweakeroo_gammaCodec(CallbackInfoReturnable<Codec<T>> cir)
+	{
+		if (this.isGamma)
+		{
+			@SuppressWarnings("unchecked")
+			Codec<T> codec = (Codec<T>) Codec.withAlternative(Codec.DOUBLE, Codec.BOOL, b -> b ? 1.0 : 0.0);
+			cir.setReturnValue(codec);
 		}
 	}
 }
